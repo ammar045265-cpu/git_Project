@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Simple HTML5 Shooter</title>
+    <style>
+        body { margin: 0; background: #111; color: white; font-family: sans-serif; overflow: hidden; display: flex; justify-content: center; align-items: center; height: 100vh; }
+        canvas { border: 2px solid #fff; background: #000; cursor: crosshair; }
+        #ui { position: absolute; top: 20px; left: 20px; pointer-events: none; font-size: 24px; }
+    </style>
+</head>
+<body>
+    <div id="ui">Score: <span id="score">0</span></div>
+    <canvas id="gameCanvas"></canvas>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const scoreEl = document.getElementById('score');
+
+canvas.width = 800;
+canvas.height = 600;
+
+let score = 0;
+let projectiles = [];
+let enemies = [];
+
+// Game Classes
+class Player {
+    constructor() {
+        this.x = canvas.width / 2;
+        this.y = canvas.height - 30;
+        this.radius = 15;
+        this.color = '#00ff00';
+    }
+    draw() {
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.fillStyle = this.color;
+        ctx.fill();
+    }
+}
+
+class Projectile {
+    constructor(x, y, targetX, targetY) {
+        this.x = x;
+        this.y = y;
+        this.radius = 5;
+        this.color = '#ffff00';
+        const angle = Math.atan2(targetY - y, targetX - x);
+        this.velocity = { x: Math.cos(angle) * 6, y: Math.sin(angle) * 6 };
+    }
+    update() {
+        this.x += this.velocity.x;
+        this.y += this.velocity.y;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.fillStyle = this.color;
+        ctx.fill();
+    }
+}
+
+class Enemy {
+    constructor() {
+        this.radius = Math.random() * 20 + 10;
+        this.x = Math.random() * canvas.width;
+        this.y = -this.radius;
+        this.color = `hsl(${Math.random() * 360}, 50%, 50%)`;
+        this.velocity = 2;
+    }
+    update() {
+        this.y += this.velocity;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.fillStyle = this.color;
+        ctx.fill();
+    }
+}
+
+const player = new Player();
+
+// Main Game Loop
+function animate() {
+    requestAnimationFrame(animate);
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.1)'; // Motion blur effect
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    player.draw();
+
+    projectiles.forEach((p, index) => {
+        p.update();
+        // Remove off-screen projectiles
+        if (p.x < 0 || p.x > canvas.width || p.y < 0 || p.y > canvas.height) {
+            projectiles.splice(index, 1);
+        }
+    });
+
+    enemies.forEach((enemy, eIndex) => {
+        enemy.update();
+
+        // Game Over condition
+        if (enemy.y > canvas.height) {
+            alert('Game Over! Final Score: ' + score);
+            document.location.reload();
+        }
+
+        // Collision detection
+        projectiles.forEach((p, pIndex) => {
+            const dist = Math.hypot(p.x - enemy.x, p.y - enemy.y);
+            if (dist - enemy.radius - p.radius < 1) {
+                enemies.splice(eIndex, 1);
+                projectiles.splice(pIndex, 1);
+                score += 10;
+                scoreEl.innerHTML = score;
+            }
+        });
+    });
+}
+
+// Controls
+window.addEventListener('mousedown', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    projectiles.push(new Projectile(player.x, player.y, e.clientX - rect.left, e.clientY - rect.top));
+});
+
+// Start spawning enemies every second
+setInterval(() => enemies.push(new Enemy()), 1000);
+animate();
+</script>
+</body>
+</html>
